@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: visitor-vehicle-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    volumes:
+      - backend-data:/app/data
+    networks:
+      - visitor-network
+
+  frontend:
+    build: ./frontend
+    container_name: visitor-vehicle-frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    networks:
+      - visitor-network
+
+volumes:
+  backend-data:
+    name: visitor-vehicle-data
+
+networks:
+  visitor-network:
+    name: visitor-vehicle-network
+    driver: bridge
