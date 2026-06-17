@@ -370,13 +370,14 @@ router.post('/:id/enter', (req, res) => {
   }
 
   const now = dayjs();
-  const currentTime = now.format('HH:mm');
+  // 如果传入了actual_enter_time，用传入的时间做校验（支持补录）；否则用当前时间
+  const checkTime = actual_enter_time ? actual_enter_time.slice(0, 5) : now.format('HH:mm');
   const timeCheck = checkTimeSlot(record.expected_enter_time, record.expected_leave_time);
   if (!timeCheck.allowed) {
     return res.status(400).json({ error: timeCheck.reasons.join('；') });
   }
 
-  if (currentTime < '07:00' || currentTime > '22:00') {
+  if (checkTime < '07:00' || checkTime > '22:00') {
     return res.status(400).json({ error: '非来访时段（07:00-22:00），禁止入场' });
   }
 
