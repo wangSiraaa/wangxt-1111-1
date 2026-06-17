@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { visitApi } from '../services/api';
+import { statusMap, statusColorMap } from '../types';
 import type { VisitRecord } from '../types';
 
 export default function RecordsPage() {
+  const navigate = useNavigate();
   const [records, setRecords] = useState<VisitRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
@@ -64,19 +67,19 @@ export default function RecordsPage() {
       rejected: 'status-tag status-rejected',
       entered: 'status-tag status-entered',
       exited: 'status-tag status-exited',
+      changed: 'status-tag',
+      cancelled: 'status-tag',
     };
     return map[status] || 'status-tag';
   };
 
+  const getStatusStyle = (status: string) => {
+    const color = statusColorMap[status as keyof typeof statusColorMap] || '#8c8c8c';
+    return { backgroundColor: color };
+  };
+
   const getStatusText = (status: string) => {
-    const map: Record<string, string> = {
-      registered: '待确认',
-      confirmed: '已确认',
-      rejected: '已驳回',
-      entered: '已入场',
-      exited: '已离场',
-    };
-    return map[status] || status;
+    return statusMap[status as keyof typeof statusMap] || status;
   };
 
   const statusOptions = [
@@ -86,6 +89,8 @@ export default function RecordsPage() {
     { value: 'rejected', label: '已驳回' },
     { value: 'entered', label: '已入场' },
     { value: 'exited', label: '已离场' },
+    { value: 'changed', label: '已变更' },
+    { value: 'cancelled', label: '已取消' },
   ];
 
   const stats = [
@@ -93,19 +98,21 @@ export default function RecordsPage() {
     { label: '待确认', value: records.filter(r => r.status === 'registered').length, color: '#faad14' },
     { label: '已入场', value: records.filter(r => r.status === 'entered').length, color: '#52c41a' },
     { label: '已离场', value: records.filter(r => r.status === 'exited').length, color: '#8c8c8c' },
+    { label: '已变更', value: records.filter(r => r.status === 'changed').length, color: '#722ed1' },
+    { label: '临时通行证', value: records.filter(r => r.is_temporary === 1).length, color: '#eb2f96' },
   ];
 
   return (
     <div className="page-container">
       <h2 className="page-title">📋 通行记录查询</h2>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '12px', marginBottom: '20px' }}>
         {stats.map((stat, index) => (
-          <div key={index} className="card" style={{ textAlign: 'center', padding: '20px' }}>
-            <div style={{ fontSize: '28px', fontWeight: 'bold', color: stat.color }}>
+          <div key={index} className="card" style={{ textAlign: 'center', padding: '16px' }}>
+            <div style={{ fontSize: '24px', fontWeight: 'bold', color: stat.color }}>
               {stat.value}
             </div>
-            <div style={{ fontSize: '14px', color: '#8c8c8c', marginTop: '8px' }}>
+            <div style={{ fontSize: '13px', color: '#8c8c8c', marginTop: '6px' }}>
               {stat.label}
             </div>
           </div>
@@ -168,10 +175,12 @@ export default function RecordsPage() {
                   <th>访客</th>
                   <th>受访人</th>
                   <th>来访事由</th>
+                  <th>登记入口</th>
                   <th>来访日期</th>
                   <th>入场时间</th>
                   <th>离场时间</th>
                   <th>状态</th>
+                  <th>操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -179,12 +188,24 @@ export default function RecordsPage() {
                   <tr key={record.id}>
                     <td>
                       <strong style={{ letterSpacing: '1px' }}>{record.plate_number}</strong>
+                      {record.is_temporary === 1 && (
+                        <div>
+                          <span className="status-tag" style={{ backgroundColor: '#722ed1', marginTop: '4px' }}>
+                            临时
+                          </span>
+                        </div>
+                      )}
                     </td>
                     <td>
                       {record.visitor_name}
                       {record.visitor_phone && (
                         <div style={{ fontSize: '12px', color: '#8c8c8c' }}>
                           {record.visitor_phone}
+                        </div>
+                      )}
+                      {record.companion_count > 0 && (
+                        <div style={{ fontSize: '12px', color: '#1890ff' }}>
+                          +{record.companion_count}人同行
                         </div>
                       )}
                     </td>
@@ -194,7 +215,7 @@ export default function RecordsPage() {
                         {record.employee_department}
                       </div>
                     </td>
-                    <td style={{ maxWidth: '180px' }}>
+                    <td style={{ maxWidth: '150px' }}>
                       <div style={{
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
@@ -204,6 +225,11 @@ export default function RecordsPage() {
                       }}>
                         {record.visit_purpose}
                       </div>
+                    </td>
+                    <td>
+                      <span style={{ fontSize: '13px' }}>
+                        {record.entry_point_name || '前台登记'}
+                      </span>
                     </td>
                     <td>{record.visit_date}</td>
                     <td style={{ fontSize: '13px', color: '#52c41a' }}>
@@ -217,9 +243,45 @@ export default function RecordsPage() {
                         : '-'}
                     </td>
                     <td>
-                      <span className={getStatusClass(record.status)}>
+                      <span className={getStatusClass(record.status)} style={getStatusStyle(record.status)}>
                         {getStatusText(record.status)}
                       </span>
+                    </td>
+                    <td style={{ width: '180px' }}>
+                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                        <button
+                          className="btn btn-default btn-xs"
+                          onClick={() => navigate(`/records/${record.id}`)}
+                          title="查看详情"
+                        >
+                          📋
+                        </button>
+                        {record.status !== 'exited' && record.status !== 'changed' && record.status !== 'cancelled' && (
+                          <button
+                            className="btn btn-warning btn-xs"
+                            onClick={() => navigate(`/change/${record.id}`)}
+                            title="变更重审"
+                          >
+                            🔄
+                          </button>
+                        )}
+                        <button
+                          className="btn btn-outline btn-xs"
+                          onClick={() => navigate(`/appeal?plate=${record.plate_number}&visitId=${record.id}`)}
+                          title="发起申诉"
+                        >
+                          📢
+                        </button>
+                        {record.status === 'registered' && (
+                          <button
+                            className="btn btn-primary btn-xs"
+                            onClick={() => navigate(`/confirm/${record.id}`)}
+                            title="确认/驳回"
+                          >
+                            ✅
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

@@ -146,7 +146,7 @@ export default function ConfirmPage() {
             className="form-select"
             value={selectedEmployee?.id || ''}
             onChange={(e) => {
-              const emp = employeeList.find(e => e.id === e.target.value);
+              const emp = employeeList.find(emp => emp.id === e.target.value);
               setSelectedEmployee(emp || null);
             }}
           >

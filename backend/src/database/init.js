@@ -16,6 +16,12 @@ let db = {
   visitors: [],
   blacklist: [],
   visit_records: [],
+  gates: [],
+  visit_companions: [],
+  operation_logs: [],
+  intercept_records: [],
+  release_failures: [],
+  blacklist_appeals: [],
 };
 
 function saveDb() {
@@ -36,6 +42,18 @@ function loadDb() {
 function initDatabase() {
   loadDb();
 
+  if (!db.vehicles) db.vehicles = [];
+  if (!db.employees) db.employees = [];
+  if (!db.visitors) db.visitors = [];
+  if (!db.blacklist) db.blacklist = [];
+  if (!db.visit_records) db.visit_records = [];
+  if (!db.gates) db.gates = [];
+  if (!db.visit_companions) db.visit_companions = [];
+  if (!db.operation_logs) db.operation_logs = [];
+  if (!db.intercept_records) db.intercept_records = [];
+  if (!db.release_failures) db.release_failures = [];
+  if (!db.blacklist_appeals) db.blacklist_appeals = [];
+
   if (db.employees.length === 0) {
     db.employees = [
       { id: 'emp_001', name: '张三', department: '技术部', phone: '13800138001', email: 'zhangsan@company.com', employee_no: 'E001', created_at: new Date().toISOString() },
@@ -48,16 +66,28 @@ function initDatabase() {
 
   if (db.blacklist.length === 0) {
     db.blacklist = [
-      { id: 'blk_001', plate_number: '京A88888', reason: '多次违规闯入', added_by: 'system', added_at: new Date().toISOString(), status: 'active' },
+      { id: 'blk_001', plate_number: '京A88888', reason: '多次违规闯入', added_by: 'system', added_at: new Date().toISOString(), status: 'active', appeal_status: 'none', last_appeal_time: null, removed_at: null, removed_by: null, removed_reason: null },
     ];
     console.log('初始化黑名单数据完成');
+  }
+
+  if (db.gates.length === 0) {
+    db.gates = [
+      { id: 'gate_001', name: '东门', code: 'EAST', type: 'main', allow_visitor: true, allow_temporary: true, created_at: new Date().toISOString() },
+      { id: 'gate_002', name: '西门', code: 'WEST', type: 'main', allow_visitor: true, allow_temporary: true, created_at: new Date().toISOString() },
+      { id: 'gate_003', name: '南门', code: 'SOUTH', type: 'employee', allow_visitor: false, allow_temporary: false, created_at: new Date().toISOString() },
+      { id: 'gate_004', name: '北门', code: 'NORTH', type: 'cargo', allow_visitor: true, allow_temporary: false, created_at: new Date().toISOString() },
+    ];
+    console.log('初始化闸口数据完成');
   }
 
   saveDb();
   console.log('数据库初始化完成');
 }
 
-initDatabase();
+if (require.main === module) {
+  initDatabase();
+}
 
 function prepare(sql) {
   const cleanSql = sql.replace(/\s+/g, ' ').trim();
@@ -330,8 +360,30 @@ function exec(sql) {
   saveDb();
 }
 
+function logOperation(visitId, action, operator, detail, extraData = {}) {
+  const logId = uuidv4();
+  const log = {
+    id: logId,
+    visit_id: visitId,
+    action,
+    operator,
+    detail,
+    extra_data: JSON.stringify(extraData),
+    created_at: new Date().toISOString(),
+  };
+  if (!db.operation_logs) {
+    db.operation_logs = [];
+  }
+  db.operation_logs.push(log);
+  saveDb();
+  return logId;
+}
+
 module.exports = {
   prepare,
   exec,
   pragma: () => {},
+  logOperation,
+  initDatabase,
+  get db() { return db; },
 };

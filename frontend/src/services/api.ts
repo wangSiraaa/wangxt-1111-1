@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { ApiResponse, VisitRecord, Employee, BlacklistItem } from '../types';
+import type { ApiResponse, VisitRecord, Employee, BlacklistItem, Gate, EntryPoint, InterceptRecord, ReleaseFailure, BlacklistAppeal, TimelineItem, VisitCompanion } from '../types';
 
 const request = axios.create({
   baseURL: '/api',
@@ -38,6 +38,55 @@ export const visitApi = {
 
   verifyPlate: (plate_number: string): Promise<ApiResponse<any>> =>
     request.post('/visit/verify-plate', { plate_number }),
+
+  getEntryPoints: (): Promise<ApiResponse<EntryPoint[]>> =>
+    request.get('/visit/entry-points'),
+
+  getCompanions: (id: string): Promise<ApiResponse<VisitCompanion[]>> =>
+    request.get(`/visit/${id}/companions`),
+
+  getTimeline: (id: string): Promise<ApiResponse<{ visit_record: VisitRecord; timeline: TimelineItem[] }>> =>
+    request.get(`/visit/${id}/timeline`),
+
+  cancel: (id: string, data?: any): Promise<ApiResponse<VisitRecord>> =>
+    request.post(`/visit/${id}/cancel`, data),
+
+  intercept: (data: any): Promise<ApiResponse<InterceptRecord>> =>
+    request.post('/visit/intercept', data),
+
+  getInterceptList: (params?: any): Promise<ApiResponse<InterceptRecord[]>> =>
+    request.get('/visit/intercept/list', { params }),
+
+  releaseFailure: (data: any): Promise<ApiResponse<ReleaseFailure>> =>
+    request.post('/visit/release-failure', data),
+
+  getReleaseFailureList: (params?: any): Promise<ApiResponse<ReleaseFailure[]>> =>
+    request.get('/visit/release-failure/list', { params }),
+};
+
+export const gateApi = {
+  list: (params?: any): Promise<ApiResponse<Gate[]>> =>
+    request.get('/gate', { params }),
+
+  detail: (id: string): Promise<ApiResponse<Gate>> =>
+    request.get(`/gate/${id}`),
+
+  checkAllow: (id: string, data: any): Promise<ApiResponse<any>> =>
+    request.post(`/gate/${id}/check-allow`, data),
+};
+
+export const appealApi = {
+  submit: (data: any): Promise<ApiResponse<BlacklistAppeal>> =>
+    request.post('/blacklist/appeal', data),
+
+  list: (params?: any): Promise<ApiResponse<BlacklistAppeal[]>> =>
+    request.get('/blacklist/appeal/list', { params }),
+
+  detail: (id: string): Promise<ApiResponse<BlacklistAppeal>> =>
+    request.get(`/blacklist/appeal/${id}`),
+
+  audit: (id: string, data: any): Promise<ApiResponse<BlacklistAppeal>> =>
+    request.post(`/blacklist/appeal/${id}/audit`, data),
 };
 
 export const employeeApi = {
